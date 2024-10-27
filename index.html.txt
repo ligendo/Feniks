@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feniks Finance Tap Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6973-pGlCSWVwvU7rgKiUL0mdJZPpUdCKH1.png');
+            background-size: cover;
+            background-position: center;
+        }
+        .game-container {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            max-width: 300px;
+            width: 100%;
+        }
+        h1 {
+            color: #f97316;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #c2410c;
+            margin-bottom: 15px;
+        }
+        #count {
+            font-size: 48px;
+            font-weight: bold;
+            color: #f97316;
+            margin-bottom: 15px;
+        }
+        #timeLeft {
+            font-size: 18px;
+            color: #c2410c;
+            margin-bottom: 15px;
+        }
+        #tapButton {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-image: url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6972-s3NOhCXopUX2KBbS7GR9Hm6DqFDwz8.jpeg');
+            background-size: cover;
+            background-position: center;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        #tapButton:active {
+            transform: scale(0.95);
+        }
+        #tapButton:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #startButton {
+            background-color: #f97316;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        #startButton:hover {
+            background-color: #ea580c;
+        }
+        #progress {
+            width: 100%;
+            height: 10px;
+            background-color: #e2e8f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        #progressBar {
+            height: 100%;
+            background-color: #f97316;
+            width: 0;
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Feniks Finance Tap Game</h1>
+        <p>Tap as fast as you can!</p>
+        <div id="count">0</div>
+        <div id="progress"><div id="progressBar"></div></div>
+        <div id="timeLeft">Time left: 10s</div>
+        <button id="tapButton" disabled></button>
+        <div id="highScore">High Score: 0</div>
+        <div id="totalTaps">Total Taps: 0</div>
+        <button id="startButton">Start Game</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        let userId = null;
+        let count = 0;
+        let timeLeft = 10;
+        let isPlaying = false;
+        let highScore = 0;
+        let totalTaps = 0;
+        let timer;
+
+        const countElement = document.getElementById('count');
+        const timeLeftElement = document.getElementById('timeLeft');
+        const tapButton = document.getElementById('tapButton');
+        const startButton = document.getElementById('startButton');
+        const highScoreElement = document.getElementById('highScore');
+        const totalTapsElement = document.getElementById('totalTaps');
+        const progressBar = document.getElementById('progressBar');
+
+        function loadUserData() {
+            const storedData = localStorage.getItem(`userData_${userId}`);
+            if (storedData) {
+                const data = JSON.parse(storedData);
+                highScore = data.highScore;
+                totalTaps = data.totalTaps;
+                updateDisplay();
+            }
+        }
+
+        function saveUserData() {
+            localStorage.setItem(`userData_${userId}`, JSON.stringify({ highScore, totalTaps }));
+        }
+
+        function updateDisplay() {
+            countElement.textContent = count;
+            timeLeftElement.textContent = `Time left: ${timeLeft}s`;
+            highScoreElement.textContent = `High Score: ${highScore}`;
+            totalTapsElement.textContent = `Total Taps: ${totalTaps}`;
+            progressBar.style.width = `${(timeLeft / 10) * 100}%`;
+        }
+
+        function startGame() {
+            count = 0;
+            timeLeft = 10;
+            isPlaying = true;
+            tapButton.disabled = false;
+            startButton.style.display = 'none';
+            updateDisplay();
+            timer = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                if (timeLeft === 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timer);
+            isPlaying = false;
+            tapButton.disabled = true;
+            startButton.style.display = 'inline-block';
+            totalTaps += count;
+            if (count > highScore) {
+                highScore = count;
+            }
+            saveUserData();
+            updateDisplay();
+        }
+
+        function handleTap() {
+            if (isPlaying) {
+                count++;
+                updateDisplay();
+            }
+        }
+
+        tapButton.addEventListener('click', handleTap);
+        startButton.addEventListener('click', startGame);
+
+        // Telegram WebApp initialization
+        tg.ready();
+        tg.expand();
+
+        // Get user ID from Telegram WebApp
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+            loadUserData();
+        } else {
+            // Fallback for testing outside of Telegram
+            userId = 'test_user';
+            loadUserData();
+        }
+
+        // If running in Telegram WebApp, use the MainButton
+        if (tg.MainButton) {
+            tg.MainButton.setText('Start Game');
+            tg.MainButton.show();
+            tg.MainButton.onClick(startGame);
+            startButton.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
